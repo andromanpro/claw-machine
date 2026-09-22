@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite';
 import { execSync } from 'node:child_process';
 import { resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
+
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 
 // метка сборки: короткий git-хеш + время — видна в углу экрана и в консоли,
 // чтобы жалобы всегда были с номером версии
@@ -22,7 +25,7 @@ export default defineConfig({
     ],
   },
   define: {
-    __BUILD_INFO__: JSON.stringify(`${hash} · ${stamp}`),
+    __BUILD_INFO__: JSON.stringify(`v${version} · ${hash} · ${stamp}`),
   },
   build: {
     rolldownOptions: {

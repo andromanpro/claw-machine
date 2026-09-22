@@ -1,6 +1,6 @@
 {
   "name": "claw-machine",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Виртуальный игровой автомат-манипулятор (кран-машина), 3D, Three.js + cannon-es",
   "private": true,
   "type": "module",
@@ -27,7 +27,9 @@
     "stress-test": "node tools/stress-test.mjs --seed=17 && node tools/stress-test.mjs --seed=67 && node tools/stress-test.mjs --seed=767",
     "bundle-test": "npm run build && node tools/bundle-test.mjs",
     "preview-test": "npm run build && node tools/preview-test.mjs",
-    "test": "npm run fugitive-models-test && npm run bundle-test && node tools/preview-test.mjs"
+    "test": "npm run test:upright && npm run test:render && npm run fugitive-models-test && npm run bundle-test && node tools/preview-test.mjs",
+    "test:upright": "node tools/fugitive-upright-test.mjs",
+    "test:render": "node tools/static-batches-test.mjs"
   },
   "dependencies": {
     "cannon-es": "^0.20.0",

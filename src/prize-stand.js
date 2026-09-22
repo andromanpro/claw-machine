@@ -19,6 +19,7 @@ import * as CANNON from 'cannon-es';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { tr, toyName } from './i18n.js';
 import { settings } from './settings.js';
+import { batchStaticMeshes } from './static-batches.js';
 
 const STAND_X = -2.55;
 const STAND_Z = 2.92;
@@ -212,6 +213,7 @@ export class PrizeStand {
     this.previewSlot = null;
     this.restore();
     this.refresh();
+    this.staticBatches = batchStaticMeshes(this.group);
   }
 
   addStaticBox(w, h, d, x, y, z, material) {
@@ -285,10 +287,25 @@ export class PrizeStand {
     toy.ai.moveZ = 0;
     toy.ai.desiredMoveX = 0;
     toy.ai.desiredMoveZ = 0;
-    toy.body.fixedRotation = true;
-    toy.body.angularVelocity.set(0, 0, 0);
-    toy.body.updateMassProperties();
-    toy.body.wakeUp();
+    this.restoreUprightFugitive(toy);
+  }
+
+  restoreUprightFugitive(toy) {
+    const body = toy.body;
+    const q = body.quaternion;
+    // fixedRotation only freezes the current pose; it does not undo a tumble.
+    // The animated model steers its own yaw while the physical root stays upright.
+    const changed = !body.fixedRotation || q.x !== 0 || q.y !== 0 || q.z !== 0 || q.w !== 1;
+    body.fixedRotation = true;
+    body.angularVelocity.set(0, 0, 0);
+    if (!changed) return;
+    body.quaternion.set(0, 0, 0, 1);
+    body.previousQuaternion.copy(body.quaternion);
+    body.interpolatedQuaternion.copy(body.quaternion);
+    toy.mesh.quaternion.copy(body.quaternion);
+    body.aabbNeedsUpdate = true;
+    body.updateMassProperties();
+    body.wakeUp();
   }
 
   cancelFloorJourney(toy) {
@@ -713,8 +730,7 @@ export class PrizeStand {
     const journey = toy.floorJourney;
     if (!journey) return;
     journey.controlled = true;
-    toy.body.fixedRotation = true;
-    toy.body.angularVelocity.set(0, 0, 0);
+    this.restoreUprightFugitive(toy);
 
     const landedY = this.floorY + (toy.r ?? 0.22) + 0.18;
     if (toy.body.position.y > landedY && journey.phase === 'run') {

@@ -324,6 +324,7 @@ try {
       onFloor: target?.onFloor,
       delivered: !target?.deliver,
       fixedRotation: target?.body.fixedRotation,
+      uprightY: 1 - 2 * (target.body.quaternion.x ** 2 + target.body.quaternion.z ** 2),
       captured: target?.ai.captured,
       journey: target?.floorJourney?.phase ?? null,
       draggable: view.prizeDrag.floorToys().includes(target),
@@ -451,7 +452,7 @@ try {
   if (crowd.minDistance < 0.18 || crowd.meanNearest < 0.28 || crowd.closePairs > 1 || crowd.targetClusters > 1 || crowd.spreadX < 0.9 || crowd.spreadZ < 0.65) throw new Error('Fugitives are clumping together');
   if (!['panic', 'hide'].includes(panic.state) || panic.distance < 0.05 || !panic.reaction) throw new Error('Threat did not trigger visible panic');
   if (!captured.captured || captured.state !== 'captured' || !captured.reaction || captured.audioState !== 'running' || captured.screamAt < 0) throw new Error('Capture reaction did not engage');
-  if (fullCatch.wins !== clawTarget.wins + 1 || !fullCatch.onFloor || !fullCatch.delivered || !fullCatch.fixedRotation || fullCatch.captured || fullCatch.journey !== 'run' || !fullCatch.draggable) throw new Error('Claw-to-floor fugitive delivery failed');
+  if (fullCatch.wins !== clawTarget.wins + 1 || !fullCatch.onFloor || !fullCatch.delivered || !fullCatch.fixedRotation || fullCatch.uprightY < .999 || fullCatch.captured || fullCatch.journey !== 'run' || !fullCatch.draggable) throw new Error('Claw-to-floor fugitive delivery failed');
   if (floorRun.phase !== 'run' || floorRun.distance < 0.08 || !['Sprint_Loop', 'Walk_Loop'].includes(floorRun.action)) throw new Error('Won fugitive did not run around the floor');
   if (approach.slot !== approachStart.slot || !approach.closer || !['approach', 'climb'].includes(approach.phase)) throw new Error('Won fugitive did not walk toward the stand');
   if (!standArrival.onStand || standArrival.slot !== approachStart.slot || standArrival.journey || !standArrival.fixedRotation) throw new Error('Won fugitive did not climb onto the reserved stand slot');

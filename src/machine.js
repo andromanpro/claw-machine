@@ -26,6 +26,7 @@ import * as CANNON from 'cannon-es';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { tr } from './i18n.js';
 import { settings } from './settings.js';
+import { batchStaticMeshes } from './static-batches.js';
 
 export const CABINET_SPEC = (() => {
   const refMm = { height: 2300, width: 1280, depth: 930 };
@@ -1605,6 +1606,8 @@ export function buildMachine(scene, world, physMat) {
   const redCabinLight = new PointLight(NEON_RED, 0.85, 4.2, 1.8);
   redCabinLight.position.set(-spec.innerX + 0.2, WALL_H - 0.55, spec.frontGlassZ - 0.2);
   group.add(redCabinLight);
+
+  batchStaticMeshes(group, [redButton, coinAcceptor, coinGlow, readyLamp, buttonRing, ...creditLamps]);
 
   return {
     dropPoint: new Vector3(holeCx, 0, holeCz),

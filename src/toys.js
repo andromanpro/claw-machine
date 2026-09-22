@@ -42,6 +42,7 @@ import {
   thinkFugitive,
 } from './fugitives.js';
 import { prepareFugitiveModelFactory } from './fugitive-models.js';
+import { batchStaticMeshes } from './static-batches.js';
 import {
   makeButtonEyePair,
   makeCheekPair,
@@ -1452,6 +1453,7 @@ export class ToyManager {
     const variantColor = tpl.palette ? (opts.color ?? pickColor()) : null;
     const mesh = tpl.make({ color: variantColor });
     simplifyToyDetails(mesh);
+    if (!tpl.fugitive && !opts.static && !TOY_GALLERY) batchStaticMeshes(mesh);
     mesh.userData.baseScale = mesh.scale.clone();
     this.scene.add(mesh);
     const grip = makeGripProfile(tpl);

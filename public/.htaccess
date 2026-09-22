@@ -1,0 +1,7 @@
+# index.html — всегда свежий (бандлы в assets/ хешированы, им кэш не вредит)
+<FilesMatch "\.html$">
+  Header set Cache-Control "no-cache, must-revalidate"
+</FilesMatch>
+<FilesMatch "\.(js|css|glb)$">
+  Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>

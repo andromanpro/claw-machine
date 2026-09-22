@@ -1,0 +1,53 @@
+{
+  "name": "claw-machine",
+  "version": "0.5.0",
+  "description": "Виртуальный игровой автомат-манипулятор (кран-машина), 3D, Three.js + cannon-es",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5273",
+    "build": "vite build",
+    "preview": "vite preview",
+    "build-fugitives": "node tools/build-fugitive-models.mjs",
+    "fugitive-models-test": "node tools/fugitive-models-test.mjs",
+    "shot": "node tools/shot.mjs",
+    "playtest": "node tools/shot.mjs --play --out=shots/run",
+    "visual-audit": "node tools/shot.mjs --audit --out=shots/audit",
+    "toy-inspect": "node tools/toy-inspect.mjs",
+    "viewer-test": "node tools/viewer-test.mjs",
+    "toy-floating-test": "node tools/toy-floating-test.mjs",
+    "prize-drag-test": "node tools/prize-drag-test.mjs",
+    "mobile-test": "node tools/mobile-test.mjs",
+    "prize-moment-test": "node tools/prize-moment-test.mjs",
+    "trick-win-test": "node tools/trick-win-test.mjs",
+    "fugitive-test": "node tools/fugitive-test.mjs",
+    "prize-stand-test": "node tools/prize-stand-test.mjs",
+    "prize-touch-test": "node tools/prize-touch-test.mjs",
+    "ux-test": "node tools/ux-test.mjs",
+    "stress-test": "node tools/stress-test.mjs --seed=17 && node tools/stress-test.mjs --seed=67 && node tools/stress-test.mjs --seed=767",
+    "bundle-test": "npm run build && node tools/bundle-test.mjs",
+    "preview-test": "npm run build && node tools/preview-test.mjs",
+    "test": "npm run fugitive-models-test && npm run bundle-test && node tools/preview-test.mjs"
+  },
+  "dependencies": {
+    "cannon-es": "^0.20.0",
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "^4.4.2",
+    "@gltf-transform/extensions": "^4.4.2",
+    "@gltf-transform/functions": "^4.4.2",
+    "puppeteer-core": "^25.3.0",
+    "vite": "^8.1.3"
+  },
+  "license": "MIT",
+  "author": "Androman (https://androman.pro)",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andromanpro/claw-machine.git"
+  },
+  "homepage": "https://andromanpro.github.io/claw-machine/"
+}

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+shots/
+tools/assets-cache/
+*.log
+.env
+.env.*
+!.env.example

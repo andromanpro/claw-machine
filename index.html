@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Автомат 7-67 — Хватайка</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕹️</text></svg>" />
+  <style>
+    :root {
+      --neon: #ffc247;
+      --neon-dim: #7f1d1d;
+      --magenta: #ff3045;
+      --gold: #fbbf24;
+      --cyan: #38f5ff;
+      --bg: #050705;
+      --panel: rgba(9, 18, 15, 0.78);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); }
+    body { font-family: Consolas, 'Segoe UI', system-ui, sans-serif; color: #e7dcc0; }
+    canvas { display: block; }
+
+    .hud { position: fixed; z-index: 10; user-select: none; pointer-events: none; }
+    .panel {
+      background: rgba(9, 18, 15, 0.9);
+      border: 1px solid rgba(255, 194, 71, 0.38);
+      border-radius: 6px;
+      padding: 10px 16px;
+      backdrop-filter: blur(6px);
+      box-shadow: inset 0 0 0 1px rgba(255,48,69,.13), 0 0 18px rgba(127, 29, 29, 0.18);
+    }
+    .btn {
+      pointer-events: auto; cursor: pointer;
+      background: rgba(127, 29, 29, 0.25);
+      border: 1px solid rgba(255, 194, 71, 0.56);
+      border-radius: 4px; color: #ffe7a6;
+      font: 700 14px Consolas, 'Segoe UI', sans-serif; letter-spacing: 1px;
+      padding: 9px 18px; transition: all .15s ease;
+    }
+    .btn:hover { background: rgba(255, 48, 69, 0.3); box-shadow: 0 0 14px rgba(255,48,69,.45); }
+    .btn.gold { border-color: rgba(251,191,36,.6); color: #fde68a; background: rgba(120,80,10,.2); }
+    .btn.gold:hover { background: rgba(251,191,36,.25); box-shadow: 0 0 14px rgba(251,191,36,.4); }
+    .btn.big { font-size: 18px; padding: 13px 34px; letter-spacing: 3px; }
+
+    #score { top: 18px; right: 66px; display: flex; gap: 12px; }
+    .stat { text-align: center; min-width: 86px; }
+    .stat .label { font-size: 10px; letter-spacing: 2px; color: #a8bacf; }
+    .stat .value {
+      font-family: Consolas, monospace; font-size: 26px; font-weight: 700;
+      color: var(--neon); text-shadow: 0 0 10px rgba(255,194,71,.6);
+      transition: transform .2s ease;
+    }
+    .stat.wins .value { color: var(--magenta); text-shadow: 0 0 10px rgba(255,48,69,.62); }
+    .stat.credits .value { color: var(--gold); text-shadow: 0 0 10px rgba(251,191,36,.55); }
+
+    #gearBtn, #helpBtn {
+      position: fixed; right: 16px; z-index: 30;
+      width: 40px; height: 40px; padding: 0; font-size: 19px; line-height: 1;
+    }
+    #gearBtn { top: 18px; }
+    #helpBtn { top: 66px; font-size: 18px; }
+    body.attract-mode #helpBtn { top: 18px; }
+    body.stand-focus #bottom,
+    body.stand-focus #coinBar,
+    body.stand-focus #touchControls {
+      opacity: 0; pointer-events: none;
+    }
+
+    #coinBar { bottom: 22px; left: 20px; display: flex; align-items: center; gap: 10px; }
+    #coinBtn.flash { animation: coinFlash .5s ease 3; }
+    @keyframes coinFlash {
+      50% { box-shadow: 0 0 22px rgba(251,191,36,.9); background: rgba(251,191,36,.4); }
+    }
+
+    #bottom {
+      bottom: 22px; left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      width: min(520px, 92vw);
+    }
+    #status { font-size: 15px; letter-spacing: .5px; text-align: center; min-height: 22px; color: #e2e8f0; width: 100%; }
+    #status.win { color: var(--magenta); text-shadow: 0 0 12px rgba(255,48,69,.72); font-weight: 700; }
+    #status.bad { color: #fda4af; }
+    #status.coin { color: #fde68a; }
+
+    #gripWrap { width: 100%; display: none; align-items: center; gap: 10px; }
+    #gripWrap .label { font-size: 10px; letter-spacing: 2px; color: #64748b; white-space: nowrap; }
+    #gripBar { flex: 1; height: 8px; border-radius: 4px; background: rgba(148,163,184,.15); overflow: hidden; }
+    #gripFill {
+      height: 100%; width: 0%; border-radius: 4px;
+      background: linear-gradient(90deg, #7f1d1d, #fbbf24, #38f5ff);
+      box-shadow: 0 0 10px rgba(255,194,71,.5); transition: width .25s ease;
+    }
+    #keys { font-size: 12px; color: #8fa2b8; letter-spacing: 1px; text-align: center; }
+    #keys b { color: #dbe7f3; font-weight: 600; }
+    #prizeDragHint {
+      display: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      color: #9ff7ff;
+      background: rgba(5, 16, 14, 0.76);
+      border: 1px solid rgba(56, 245, 255, 0.32);
+      box-shadow: 0 0 14px rgba(56, 245, 255, 0.12);
+      font-size: 11px;
+      letter-spacing: 1.2px;
+      text-align: center;
+    }
+    body.has-floor-prize:not(.attract-mode) #prizeDragHint { display: block; }
+
+    /* === Attract-экран === */
+    #attract {
+      position: fixed; inset: 0; z-index: 40; pointer-events: none;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+      padding: 0 0 8vh;
+      overflow: hidden; isolation: isolate;
+      background:
+        linear-gradient(180deg, rgba(5,7,5,0), rgba(5,7,5,.42)),
+        radial-gradient(ellipse at center, transparent 56%, rgba(5,7,5,.68) 100%);
+      transition: opacity .6s ease;
+    }
+    #attract::before {
+      content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        repeating-linear-gradient(180deg, rgba(255,255,255,.025) 0 1px, transparent 1px 6px);
+      mix-blend-mode: screen; opacity: .12;
+    }
+    #attract::after {
+      content: none;
+    }
+    #attract > * { position: relative; z-index: 1; }
+    #attract.hidden { opacity: 0; }
+    #attract .tagline {
+      margin-top: 8px; color: #ffc247; letter-spacing: 4px; font-size: 14px;
+      text-shadow: 0 0 18px rgba(255,194,71,.72), 0 0 36px rgba(255,48,69,.36);
+    }
+    #attract .actions { display: flex; gap: 14px; align-items: center; }
+    #attract .startBox { width: min(520px, 92vw); text-align: center; }
+    #attract .actions { justify-content: center; }
+    #attract .hint { margin-top: 12px; font-size: 12px; color: #7a6d56; letter-spacing: 2px; text-align: center; }
+    #playBtn { box-shadow: 0 0 24px rgba(255,48,69,.25); }
+    body.attract-mode #attract .tagline,
+    body.attract-mode #attract .hint,
+    body.attract-mode #attract .startBox,
+    body.attract-mode #score,
+    body.attract-mode #gearBtn,
+    body.attract-mode #coinBar,
+    body.attract-mode #bottom,
+    body.attract-mode #touchControls,
+    body.attract-mode #buildTag,
+    body.attract-mode #perfTag {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* === Справка по управлению === */
+    #onboarding {
+      position: fixed; inset: 0; z-index: 65;
+      display: grid; place-items: center;
+      padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right))
+        max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+      background:
+        radial-gradient(circle at 50% 43%, rgba(255,194,71,.11), transparent 34%),
+        rgba(2, 5, 4, .76);
+      backdrop-filter: blur(8px);
+      opacity: 0; visibility: hidden; pointer-events: none;
+      transition: opacity .22s ease, visibility .22s ease;
+    }
+    #onboarding.show { opacity: 1; visibility: visible; pointer-events: auto; }
+    body.onboarding-open #touchControls { opacity: 0; visibility: hidden; }
+    #onboardingCard {
+      width: min(520px, 94vw);
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+      padding: 24px 26px 20px;
+      border: 1px solid rgba(255,194,71,.62);
+      border-radius: 12px;
+      background: linear-gradient(155deg, rgba(16,35,29,.97), rgba(5,10,8,.98));
+      box-shadow: 0 24px 80px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,48,69,.12);
+      text-align: center;
+    }
+    #onboardingTop { display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+    #onboardingKicker, #onboardingCount {
+      color: #38f5ff; font-size: 10px; font-weight: 800; letter-spacing: 2px;
+    }
+    #onboardingCount { color: #8fa2b8; font-family: Consolas, monospace; }
+    #onboardingIcon {
+      width: 84px; height: 84px; margin: 18px auto 12px;
+      display: grid; place-items: center;
+      border: 1px solid rgba(255,194,71,.45); border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,48,69,.2), rgba(255,194,71,.04) 70%);
+      color: #ffe7a6; font: 900 27px Consolas, monospace; letter-spacing: 1px;
+      box-shadow: 0 0 26px rgba(255,194,71,.12);
+    }
+    #onboardingTitle { color: #ffe7a6; font-size: 24px; letter-spacing: 3px; }
+    #onboardingText {
+      min-height: 48px; margin: 12px auto 16px; max-width: 420px;
+      color: #c8d3cf; font: 14px/1.55 'Segoe UI', system-ui, sans-serif;
+    }
+    #onboardingDots { display: flex; justify-content: center; gap: 7px; margin-bottom: 18px; }
+    #onboardingDots i {
+      width: 22px; height: 3px; border-radius: 3px; background: rgba(148,163,184,.22);
+      transition: background .18s, box-shadow .18s;
+    }
+    #onboardingDots i.active { background: #ffc247; box-shadow: 0 0 9px rgba(255,194,71,.58); }
+    #onboardingActions { display: flex; justify-content: center; gap: 10px; }
+    #onboardingSkip { color: #8fa2b8; border-color: rgba(148,163,184,.3); background: transparent; }
+    #onboardingNext { min-width: 132px; }
+
+    /* === Настройки === */
+    #settingsPanel {
+      position: fixed; top: 0; right: 0; bottom: 0; z-index: 50;
+      width: min(340px, 92vw);
+      background: rgba(7, 13, 10, 0.94);
+      border-left: 1px solid rgba(255,194,71,.34);
+      backdrop-filter: blur(10px);
+      padding: 22px 20px;
+      transform: translateX(105%); transition: transform .3s ease;
+      display: flex; flex-direction: column; gap: 6px;
+      overflow-y: auto;
+    }
+    #settingsPanel.open { transform: translateX(0); }
+    #settingsPanel h2 { color: var(--neon); font-size: 16px; letter-spacing: 3px; margin-bottom: 14px; }
+    #clearCollectionBtn { width: 100%; font-size: 11px; letter-spacing: 1.2px; }
+    .opt {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 11px 4px; border-bottom: 1px solid rgba(148,163,184,.1);
+      font-size: 14px; color: #cbd5e1; cursor: pointer;
+    }
+    .opt input { display: none; }
+    .toggle {
+      flex: 0 0 auto; width: 42px; height: 22px; border-radius: 11px;
+      background: rgba(148,163,184,.25); position: relative; transition: background .2s;
+    }
+    .toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
+      border-radius: 50%; background: #94a3b8; transition: all .2s;
+    }
+    .opt input:checked + .toggle { background: rgba(255,48,69,.58); }
+    .opt input:checked + .toggle::after { left: 23px; background: #ffe7a6; box-shadow: 0 0 8px rgba(255,194,71,.82); }
+    #closeSettings { margin-top: auto; }
+    .opt.range { flex-wrap: wrap; cursor: default; }
+    .opt.range .rangeVal { color: var(--neon); font-family: Consolas, monospace; font-size: 13px; }
+    .opt.range input[type=range] {
+      display: block; width: 100%; margin-top: 8px; accent-color: #ffc247; cursor: pointer;
+    }
+    .opt select {
+      pointer-events: auto;
+      min-width: 118px;
+      background: rgba(5, 10, 8, 0.92);
+      border: 1px solid rgba(255, 194, 71, 0.46);
+      border-radius: 4px;
+      color: #ffe7a6;
+      font: 700 13px Consolas, 'Segoe UI', sans-serif;
+      padding: 6px 8px;
+      outline: none;
+    }
+
+    .prizeToast {
+      position: fixed; top: 96px; right: 30px; z-index: 35;
+      color: var(--magenta); font: 700 17px Consolas, 'Segoe UI', sans-serif; letter-spacing: 1px;
+      text-shadow: 0 0 12px rgba(255,48,69,.8);
+      animation: toastUp 1.9s ease forwards; pointer-events: none;
+    }
+    .prizeToast.rare {
+      color: var(--gold); font-size: 21px;
+      text-shadow: 0 0 14px rgba(251,191,36,.9), 0 0 40px rgba(251,191,36,.5);
+    }
+    .prizeToast.trick {
+      color: var(--neon); font-size: 19px;
+      text-shadow: 0 0 14px rgba(56,245,255,.9), 0 0 36px rgba(56,245,255,.42);
+    }
+    #prizeMoment {
+      position: fixed;
+      inset: 0;
+      z-index: 45;
+      display: grid;
+      place-items: end center;
+      padding: 0 16px max(42px, env(safe-area-inset-bottom));
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity .22s ease, visibility .22s ease;
+      background: radial-gradient(circle at 64% 78%, rgba(255,194,71,.08), transparent 28%);
+    }
+    #prizeMoment.active {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      cursor: pointer;
+    }
+    #prizeMomentCard {
+      min-width: min(360px, 86vw);
+      padding: 10px 18px 9px;
+      border: 1px solid rgba(255,194,71,.65);
+      border-radius: 8px;
+      background: rgba(5,10,8,.82);
+      box-shadow: 0 0 24px rgba(255,194,71,.18), inset 0 0 0 1px rgba(255,48,69,.12);
+      color: #ffe7a6;
+      text-align: center;
+      letter-spacing: 2.4px;
+      text-shadow: 0 0 10px rgba(255,194,71,.45);
+      backdrop-filter: blur(7px);
+    }
+    #prizeMomentTitle { font-size: 15px; font-weight: 900; }
+    #prizeMomentHint { margin-top: 4px; font-size: 9px; opacity: .62; letter-spacing: 1.4px; }
+
+    #gpBlock { padding: 12px 4px; border-bottom: 1px solid rgba(148,163,184,.1); }
+    #gpBlock #gpName { font-size: 12px; color: #64748b; margin-bottom: 8px; word-break: break-all; }
+
+    #calOverlay {
+      position: fixed; inset: 0; z-index: 70; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(3, 5, 10, 0.75);
+    }
+    #calOverlay.show { display: flex; }
+    #calBox { text-align: center; padding: 26px 34px; }
+    #calText { font-size: 19px; color: var(--neon); letter-spacing: 1px; margin-bottom: 10px; }
+    #calBox small { color: #64748b; letter-spacing: 2px; }
+    @keyframes toastUp {
+      0% { opacity: 0; transform: translateY(14px); }
+      15% { opacity: 1; transform: translateY(0); }
+      75% { opacity: 1; }
+      100% { opacity: 0; transform: translateY(-26px); }
+    }
+
+    #perfTag, #buildTag {
+      position: fixed; right: 10px; z-index: 30;
+      font: 12px Consolas, monospace; color: #ffe7a6; letter-spacing: 1px;
+      background: rgba(9, 18, 15, 0.82);
+      border: 1px solid rgba(255, 194, 71, 0.32);
+      border-radius: 6px; padding: 3px 9px;
+    }
+    #perfTag {
+      bottom: 34px;
+      color: #38f5ff;
+      border-color: rgba(56, 245, 255, 0.28);
+      pointer-events: none;
+    }
+    #buildTag {
+      bottom: 8px;
+      user-select: text; cursor: pointer; transition: box-shadow .15s;
+    }
+    #buildTag:hover { box-shadow: 0 0 10px rgba(255,194,71,.5); }
+
+    #loader {
+      position: fixed; inset: 0; z-index: 60; display: flex;
+      align-items: center; justify-content: center; background: var(--bg);
+      transition: opacity .5s ease; font-size: 15px; letter-spacing: 3px;
+      color: var(--neon); text-shadow: 0 0 12px rgba(255,194,71,.58);
+    }
+    #loader.hidden { opacity: 0; pointer-events: none; }
+
+    #touchControls {
+      display: none;
+      position: fixed;
+      inset: auto 12px max(12px, env(safe-area-inset-bottom)) 12px;
+      z-index: 28;
+      pointer-events: none;
+      align-items: end;
+      justify-content: space-between;
+      gap: 12px;
+      transition: opacity .2s ease, visibility .2s ease;
+    }
+    body.prize-moment #touchControls { opacity: 0; visibility: hidden; }
+    .touchPad {
+      pointer-events: auto;
+      display: grid;
+      grid-template-columns: repeat(3, 46px);
+      grid-template-rows: repeat(3, 46px);
+      gap: 6px;
+      padding: 8px;
+      border-radius: 8px;
+      background: rgba(5, 10, 8, 0.62);
+      border: 1px solid rgba(255, 194, 71, 0.22);
+      backdrop-filter: blur(6px);
+      touch-action: none;
+    }
+    .touchBtn {
+      pointer-events: auto;
+      touch-action: none;
+      width: 46px;
+      height: 46px;
+      padding: 0;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      line-height: 1;
+      background: rgba(9, 18, 15, 0.84);
+      border: 1px solid rgba(255, 194, 71, 0.45);
+      color: #ffe7a6;
+      text-shadow: 0 0 10px rgba(255,194,71,.55);
+      box-shadow: inset 0 0 0 1px rgba(255,48,69,.08);
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .touchBtn.active {
+      background: rgba(255, 48, 69, 0.28);
+      border-color: rgba(255, 194, 71, 0.78);
+      box-shadow: 0 0 16px rgba(255,48,69,.36), inset 0 0 0 1px rgba(255,194,71,.16);
+    }
+    .touchBtn.up { grid-column: 2; grid-row: 1; }
+    .touchBtn.left { grid-column: 1; grid-row: 2; }
+    .touchBtn.right { grid-column: 3; grid-row: 2; }
+    .touchBtn.down { grid-column: 2; grid-row: 3; }
+    #touchGrab {
+      pointer-events: auto;
+      touch-action: none;
+      width: 86px;
+      height: 86px;
+      border-radius: 50%;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      background: radial-gradient(circle at 38% 34%, #ff6b6b, #b91c1c 72%);
+      border: 2px solid rgba(255, 231, 166, 0.74);
+      box-shadow: 0 0 22px rgba(255,48,69,.42), inset 0 0 18px rgba(255,255,255,.1);
+    }
+
+    @media (max-width: 640px) {
+      #score {
+        top: 10px; left: 8px; right: 54px;
+        gap: 6px;
+      }
+      .panel { border-radius: 8px; padding: 8px 10px; }
+      .stat { min-width: 0; flex: 1; }
+      .stat .label { font-size: 9px; letter-spacing: 1.5px; }
+      .stat .value { font-size: 22px; }
+      #gearBtn, #helpBtn { right: 8px; width: 40px; height: 40px; }
+      #gearBtn { top: 10px; }
+      #helpBtn { top: 58px; }
+      body.attract-mode #helpBtn { top: 10px; }
+      #attract { padding: 2vh 0 4vh; }
+      #attract .tagline {
+        width: min(350px, 92vw);
+        margin-top: 82px;
+        font-size: 11px;
+        line-height: 1.5;
+        letter-spacing: 2.4px;
+        text-align: center;
+      }
+      .btn.big {
+        max-width: min(270px, 90vw);
+        font-size: 17px;
+        letter-spacing: 2px;
+      }
+      #attract .hint {
+        width: min(330px, 90vw);
+        margin-inline: auto;
+        font-size: 10px;
+        line-height: 1.45;
+        letter-spacing: 1.3px;
+      }
+      #keys { display: none; }
+      #bottom { bottom: 190px; width: min(360px, 92vw); }
+      #coinBar { bottom: 190px; left: 8px; }
+      #coinBtn { padding: 8px 12px; font-size: 12px; }
+      #touchControls { display: flex; }
+      #status { font-size: 13px; }
+      #gripWrap { max-width: 230px; }
+      #perfTag {
+        top: 136px; right: 8px; bottom: auto;
+        font-size: 10px; letter-spacing: .5px;
+      }
+      #buildTag { display: none; }
+      #onboardingCard { padding: 20px 18px 17px; }
+      #onboardingIcon { width: 72px; height: 72px; margin-top: 14px; font-size: 34px; }
+      #onboardingTitle { font-size: 20px; letter-spacing: 2px; }
+      #onboardingText { font-size: 13px; }
+    }
+
+    @media (pointer: coarse) and (max-width: 900px) and (orientation: portrait) {
+      #touchControls { display: flex; }
+      #bottom { bottom: 190px; }
+      #coinBar { bottom: 190px; }
+      #keys, #buildTag { display: none; }
+    }
+
+    @media (pointer: coarse) and (max-width: 1180px) and (orientation: landscape),
+      (pointer: coarse) and (max-height: 600px) {
+      #touchControls {
+        display: flex;
+        inset: auto 10px max(10px, env(safe-area-inset-bottom)) 10px;
+      }
+      .touchPad {
+        grid-template-columns: repeat(3, 40px);
+        grid-template-rows: repeat(3, 40px);
+        gap: 4px; padding: 6px;
+      }
+      .touchBtn { width: 40px; height: 40px; font-size: 16px; }
+      #touchGrab { width: 76px; height: 76px; font-size: 12px; }
+      #score { top: 8px; left: 8px; right: auto; gap: 5px; }
+      .panel { padding: 6px 8px; }
+      .stat { min-width: 72px; }
+      .stat .label { font-size: 8px; letter-spacing: 1.2px; }
+      .stat .value { font-size: 20px; }
+      #gearBtn { top: 8px; right: 8px; }
+      #helpBtn { top: 56px; right: 8px; }
+      body.attract-mode #helpBtn { top: 8px; }
+      #coinBar { top: 66px; left: 8px; bottom: auto; }
+      #coinBtn { padding: 6px 9px; font-size: 11px; }
+      #bottom { bottom: 10px; width: min(340px, calc(100vw - 380px)); gap: 4px; }
+      #keys, #buildTag { display: none; }
+      #status { min-height: 18px; font-size: 12px; }
+      #gripWrap { max-width: 300px; padding: 6px 10px !important; }
+      #prizeDragHint { padding: 4px 7px; font-size: 9px; }
+      #perfTag { top: 104px; right: 8px; bottom: auto; font-size: 9px; }
+      #settingsPanel { width: min(390px, 80vw); padding: 14px 16px; }
+      #settingsPanel h2 { margin-bottom: 5px; }
+      .opt { padding: 8px 4px; font-size: 12px; }
+      #onboardingCard { padding: 16px 20px 14px; }
+      #onboardingIcon { width: 58px; height: 58px; margin: 8px auto; font-size: 29px; }
+      #onboardingTitle { font-size: 19px; }
+      #onboardingText { min-height: 38px; margin: 7px auto 10px; font-size: 12px; }
+      #onboardingDots { margin-bottom: 10px; }
+    }
+  </style>
+  <script type="module" crossorigin src="./assets/game-Bk62OAY_.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/rolldown-runtime-Bi-D_2cA.js">
+  <link rel="modulepreload" crossorigin href="./assets/three-core-CM1SPQVe.js">
+  <link rel="modulepreload" crossorigin href="./assets/three-core-D97vG1mD.js">
+  <link rel="modulepreload" crossorigin href="./assets/three-core-B3heRoS7.js">
+  <link rel="modulepreload" crossorigin href="./assets/three-core-BY5SkiPz.js">
+  <link rel="modulepreload" crossorigin href="./assets/three-addons-CgcgmdzC.js">
+  <link rel="modulepreload" crossorigin href="./assets/toys-BkKrtDmq.js">
+  <link rel="modulepreload" crossorigin href="./assets/physics-DZofKqOa.js">
+</head>
+<body class="attract-mode">
+  <div id="loader">ЗАГРУЗКА ЖЕТОННОГО БЛОКА…</div>
+
+  <div id="onboarding" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+    <div id="onboardingCard">
+      <div id="onboardingTop">
+        <div id="onboardingKicker">ШАГ 01 · ПИТАНИЕ</div>
+        <div id="onboardingCount">01 / 03</div>
+      </div>
+        <div id="onboardingIcon" aria-hidden="true">67</div>
+      <h2 id="onboardingTitle">ВСТАВЬ ЖЕТОН</h2>
+      <p id="onboardingText">Один жетон даёт одну попытку.</p>
+      <div id="onboardingDots" aria-hidden="true"><i class="active"></i><i></i><i></i></div>
+      <div id="onboardingActions">
+        <button type="button" class="btn" id="onboardingSkip">ПРОПУСТИТЬ</button>
+        <button type="button" class="btn gold" id="onboardingNext">ДАЛЬШЕ</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="prizeMoment" aria-hidden="true">
+    <div id="prizeMomentCard">
+      <div id="prizeMomentTitle">ПРИЗ В ПУТИ</div>
+      <div id="prizeMomentHint">НАЖМИ, ЧТОБЫ ПРОПУСТИТЬ</div>
+    </div>
+  </div>
+
+  <!-- attract-экран: без надписей — вывеска светится на самом автомате -->
+  <div id="attract">
+    <div class="tagline">СОВКИБЕР-АВТОМАТ · ЦЕХ 04 · СХВАТИ ЕСЛИ СМОЖЕШЬ</div>
+    <div class="startBox">
+      <div class="actions">
+        <button class="btn big" id="playBtn">▶ ПУСК</button>
+      </div>
+      <div class="hint">ENTER / ПРОБЕЛ — ПУСК · ЖЕТОНЫ В ПРИЁМНИКЕ · БЛОК ЗАХВАТА ГОТОВ</div>
+    </div>
+  </div>
+
+  <div id="score" class="hud">
+    <div class="panel stat credits">
+      <div class="label">ЖЕТОНЫ</div>
+      <div class="value" id="credits">0</div>
+    </div>
+    <div class="panel stat tries">
+      <div class="label">ПОПЫТКИ</div>
+      <div class="value" id="tries">0</div>
+    </div>
+    <div class="panel stat wins">
+      <div class="label">ПРИЗЫ</div>
+      <div class="value" id="wins">0</div>
+    </div>
+  </div>
+
+  <button class="btn" id="gearBtn" title="Настройки">⚙</button>
+  <button class="btn" id="helpBtn" title="Как играть" aria-label="Как играть">?</button>
+
+  <div id="coinBar" class="hud">
+    <button class="btn gold" id="coinBtn">🪙 Жетон <small>[М]</small></button>
+  </div>
+
+  <div id="buildTag"></div>
+  <div id="perfTag">FPS -- · -- ms</div>
+
+  <div id="bottom" class="hud">
+    <div id="gripWrap" class="panel" style="pointer-events:none; padding:8px 14px;">
+      <span class="label">ХВАТ</span>
+      <div id="gripBar"><div id="gripFill"></div></div>
+      <span class="label" id="gripPct">0%</span>
+    </div>
+    <div id="status">&nbsp;</div>
+    <div id="keys"><b>← ↑ ↓ →</b> каретка &nbsp;·&nbsp; <b>ПРОБЕЛ</b> хватать &nbsp;·&nbsp; <b>М</b> жетон &nbsp;·&nbsp; <b>мышь</b> камера</div>
+    <div id="prizeDragHint">ПРИЗ НА ПОЛУ · ПЕРЕТАЩИ НА СТЕНД ИЛИ ПОДОЖДИ 10 С</div>
+  </div>
+
+  <div id="touchControls" role="group" aria-label="Управление автоматом">
+    <div class="touchPad">
+      <button type="button" class="touchBtn up" data-touch-x="0" data-touch-y="-1" aria-label="Каретка вперёд">▲</button>
+      <button type="button" class="touchBtn left" data-touch-x="-1" data-touch-y="0" aria-label="Каретка влево">◀</button>
+      <button type="button" class="touchBtn right" data-touch-x="1" data-touch-y="0" aria-label="Каретка вправо">▶</button>
+      <button type="button" class="touchBtn down" data-touch-x="0" data-touch-y="1" aria-label="Каретка назад">▼</button>
+    </div>
+    <button type="button" class="touchBtn" id="touchGrab" aria-label="Опустить клешню и схватить">ХВАТ</button>
+  </div>
+
+  <!-- настройки -->
+  <div id="settingsPanel">
+    <h2>НАСТРОЙКИ</h2>
+    <div id="optList"></div>
+    <div id="gpBlock">
+      <div id="gpName">Джойстик: не найден</div>
+      <button class="btn" id="gpCalBtn">🎮 Калибровка джойстика</button>
+    </div>
+    <button class="btn" id="closeSettings">Закрыть</button>
+  </div>
+
+  <!-- оверлей калибровки джойстика -->
+  <div id="calOverlay">
+    <div class="panel" id="calBox">
+      <div id="calText">…</div>
+      <small>Esc — отмена</small>
+    </div>
+  </div>
+
+</body>
+</html>

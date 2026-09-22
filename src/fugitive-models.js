@@ -171,11 +171,15 @@ export function animateDetailedFugitive(toy, dt) {
   const ai = toy.ai;
   const rig = toy.mesh?.userData?.detailedFugitive;
   if (!ai || !rig?.ready) return false;
-  const held = toy.body?.collisionFilterGroup === 16 || ai.captured;
+  const held = !toy.onStand && (toy.body?.collisionFilterGroup === 16 || ai.captured);
   const moveX = ai.visualMoveX ?? 0;
   const moveZ = ai.visualMoveZ ?? 0;
-  const speed = held ? 0 : Math.hypot(moveX, moveZ);
-  if (speed > 0.025 && !held) {
+  const speed = held || toy.onStand ? 0 : Math.hypot(moveX, moveZ);
+  if (toy.onStand) {
+    // The shelf already turns the physical root towards the player.
+    // Cancel the model's base yaw rather than preserving its last walk heading.
+    rig.visualYaw = -Math.PI;
+  } else if (speed > 0.025 && !held) {
     // Quaternius FBX смотрит вдоль оси, противоположной стандартному +Z Three.js.
     // Компенсируем это здесь: без разворота клип шагает лицом против скорости.
     const targetYaw = Math.atan2(moveX, moveZ) + Math.PI;
@@ -185,9 +189,10 @@ export function animateDetailedFugitive(toy, dt) {
   rig.actionHold = Math.max(0, (rig.actionHold ?? 0) - dt);
 
   let next = 'Idle_Loop';
-  const forced = held || toy.floorJourney?.phase === 'climb'
+  const forced = toy.onStand || held || toy.floorJourney?.phase === 'climb'
     || ai.state === 'stand-approach' || ai.state === 'hide' || ai.state === 'freeze';
-  if (held || toy.floorJourney?.phase === 'climb') next = 'Jump_Loop';
+  if (toy.onStand) next = 'Idle_Loop';
+  else if (held || toy.floorJourney?.phase === 'climb') next = 'Jump_Loop';
   else if (ai.state === 'stand-approach') next = 'Walk_Loop';
   else if (ai.state === 'hide' || ai.state === 'freeze') next = 'Crouch_Idle_Loop';
   else if (rig.actionName === 'Sprint_Loop') next = speed > 0.18 ? 'Sprint_Loop' : speed > 0.018 ? 'Walk_Loop' : 'Idle_Loop';

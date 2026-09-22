@@ -519,6 +519,21 @@ export class PrizeStand {
       toy.ai.visualMotionAge = 0;
       toy.ai.visualSampleX = slot.x;
       toy.ai.visualSampleZ = slot.z;
+      toy.ai.visualYaw = 0;
+      toy.ai.visualSpeed = 0;
+      // The shelf sets the body's facing. Clear the character's previous
+      // walking direction before measuring and fitting it into the slot.
+      const detailed = toy.mesh.userData.detailedFugitive;
+      if (detailed?.ready) {
+        detailed.visualYaw = -Math.PI;
+        detailed.model.rotation.y = 0;
+      }
+      const procedural = toy.mesh.userData.fugitiveRig;
+      if (procedural) {
+        procedural.rig.rotation.y = 0;
+        procedural.rig.rotation.x = 0;
+        procedural.rig.position.y = 0;
+      }
       toy.body.fixedRotation = true;
     }
     toy.mesh.visible = this.enabled;

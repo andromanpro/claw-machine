@@ -612,18 +612,19 @@ export function animateFugitive(toy, dt, elapsed) {
   if (animateDetailedFugitive(toy, dt)) return;
   const refs = toy.mesh?.userData?.fugitiveRig;
   if (!ai || !refs) return;
-  const held = toy.body?.collisionFilterGroup === 16 || ai.captured;
+  const held = !toy.onStand && (toy.body?.collisionFilterGroup === 16 || ai.captured);
   const vx = held ? 0 : (ai.visualMoveX ?? 0);
   const vz = held ? 0 : (ai.visualMoveZ ?? 0);
   const targetSpeed = Math.hypot(vx, vz);
-  ai.visualSpeed = MathUtils.lerp(ai.visualSpeed, targetSpeed, Math.min(1, dt * 8));
+  ai.visualSpeed = toy.onStand ? 0 : MathUtils.lerp(ai.visualSpeed, targetSpeed, Math.min(1, dt * 8));
   const speed = ai.visualSpeed;
   const panic = ['alert', 'freeze', 'panic', 'hide'].includes(ai.state) && !toy.scored;
   const motion = elapsed * (held ? 12 : 7 + speed * 15) + ai.phase;
   const stride = held ? Math.sin(motion) * 0.65 : Math.sin(motion) * Math.min(0.9, speed * 2.7);
   const k = Math.min(1, dt * 12);
 
-  if (speed > 0.025 && !held) {
+  if (toy.onStand) ai.visualYaw = 0;
+  else if (speed > 0.025 && !held) {
     const targetYaw = Math.atan2(vx, vz);
     ai.visualYaw = lerpAngle(ai.visualYaw, targetYaw, Math.min(1, dt * 8));
   }

@@ -1,6 +1,6 @@
 {
   "name": "claw-machine",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Виртуальный игровой автомат-манипулятор (кран-машина), 3D, Three.js + cannon-es",
   "private": true,
   "type": "module",
